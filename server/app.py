@@ -25,5 +25,60 @@ def index():
     return "<h1>Code challenge</h1>"
 
 
+@app.route('/restaurants', methods=['GET'])
+def restaurants():
+    restaurants = Restaurant.query.all()
+    return [r.to_dict(only=('id', 'name', 'address')) for r in restaurants], 200
+
+
+@app.route('/restaurants/<int:id>', methods=['GET'])
+def restaurant_by_id(id):
+    restaurant = Restaurant.query.filter_by(id=id).first()
+    if not restaurant:
+        return {"error": "Restaurant not found"}, 404
+    return restaurant.to_dict(), 200
+
+
+@app.route('/restaurants/<int:id>', methods=['DELETE'])
+def delete_restaurant(id):
+    restaurant = Restaurant.query.filter_by(id=id).first()
+    if not restaurant:
+        return {"error": "Restaurant not found"}, 404
+    db.session.delete(restaurant)
+    db.session.commit()
+    return '', 204
+
+
+@app.route('/pizzas', methods=['GET'])
+def pizzas():
+    pizzas = Pizza.query.all()
+    return [p.to_dict(only=('id', 'name', 'ingredients')) for p in pizzas], 200
+
+
+@app.route('/restaurant_pizzas', methods=['POST'])
+def create_restaurant_pizza():
+    data = request.get_json()
+    try:
+        restaurant_pizza = RestaurantPizza(
+            price=data['price'],
+            pizza_id=data['pizza_id'],
+            restaurant_id=data['restaurant_id']
+        )
+        db.session.add(restaurant_pizza)
+        db.session.commit()
+        
+        response = {
+            'id': restaurant_pizza.id,
+            'price': restaurant_pizza.price,
+            'pizza_id': restaurant_pizza.pizza_id,
+            'restaurant_id': restaurant_pizza.restaurant_id,
+            'pizza': restaurant_pizza.pizza.to_dict(only=('id', 'name', 'ingredients')),
+            'restaurant': restaurant_pizza.restaurant.to_dict(only=('id', 'name', 'address'))
+        }
+        return response, 201
+    except ValueError:
+        return {"errors": ["validation errors"]}, 400
+
+
 if __name__ == "__main__":
     app.run(port=5555, debug=True)
